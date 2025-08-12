@@ -42,6 +42,8 @@ academic_base_payload = {
     # ]
 }
 
+
+
 def set_payload(model: str, user_input: str, search_mode: str):
     if search_mode == "normal":
         payload = copy.deepcopy(normal_base_payload)
@@ -53,7 +55,7 @@ def set_payload(model: str, user_input: str, search_mode: str):
 
     return payload
 
-def get_response(payload:dict):
+def get_response(payload: dict) -> dict | None:
     try:
         response = requests.post(api_url, headers=headers, json=payload)
 
@@ -80,17 +82,72 @@ def get_response(payload:dict):
         print(f"Request Error: {e}")
         return None
 
-def save_result(response, search_results):
-    os.makedirs("survey/result", exist_ok=True)
+def get_unique_search_results(current_search_results: list, existing_search_results: list):
+    key_field = "url"
+    # 建立現有結果的集合（用於快速查找）
+    existing_keys = {result.get(key_field) for result in existing_search_results if result.get(key_field)}
+    
+    # 篩選出非重複的新結果
+    unique_search_results = []
+    duplicates_found = 0
 
-    with open("survey/result/response.md", "w", encoding="utf-8") as f:
-        f.write(response['choices'][0]['message']['content'])
+    print()
+    for result in current_search_results:
+        result_key = result.get(key_field)
+        if result_key and result_key not in existing_keys:
+            unique_search_results.append(result)
+            existing_keys.add(result_key)  # 避免在新結果中也有重複
+        else:
+            print(f"Duplicated: {result['title']}")
+            duplicates_found += 1
+    
+    print(f"Duplicate check: {duplicates_found} duplicates removed, {len(unique_search_results)} new items")
 
-    with open("survey/result/search_results.json", "w", encoding="utf-8") as f:
-        json.dump(search_results, f, ensure_ascii=False, indent=2)
+    return unique_search_results
 
-    print("Results saved successfully.")
+def save_response(input: str, response: dict, current_search_results: list, response_md_dir: str):
+    with open(response_md_dir, "a", encoding="utf-8") as f:
+        markdown_links = []
+        for i, result in enumerate(current_search_results, 1):
+            title = result.get('title', 'Unknown Title')
+            url = result.get('url', '#')
+            date = result.get('date', 'No date')
+            
+            # 建立 Markdown 超連結格式
+            markdown_link = f"{i}. [{title}]({url})"
+            if date and date != 'No date':
+                markdown_link += f" *(Date: {date})*"
+            
+            markdown_links.append(markdown_link)
+        
+        hyperlink_content = "**References**\n\n" + "\n".join(markdown_links)
+        # complete_content = (
+        #     f"# **{input.strip()}**\n\n"
+        #     f"{response['choices'][0]['message']['content']}"
+        #     f"\n\n---\n\n"
+        #     f"{hyperlink_content}"
+        #     f"\n\n---\n\n"
+        # )
+        complete_content = f"""# **{input.strip()}**
 
+{response['choices'][0]['message']['content']}
+
+---
+
+{hyperlink_content}
+
+---
+
+"""
+        f.write(complete_content)
+
+def save_search_results(existing_search_results, unique_search_results, search_results_json_dir: str):
+    final_search_results = existing_search_results + unique_search_results
+    with open(search_results_json_dir, "w", encoding="utf-8") as f:
+        json.dump(final_search_results, f, indent=2, ensure_ascii=False)
+
+
+    
 if __name__ == "__main__":
     import json
 
