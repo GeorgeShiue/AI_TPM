@@ -81,11 +81,15 @@ def get_response(payload:dict):
         return None
 
 def save_result(response, search_results):
+    os.makedirs("survey/result", exist_ok=True)
+
     with open("survey/result/response.md", "w", encoding="utf-8") as f:
         f.write(response['choices'][0]['message']['content'])
 
     with open("survey/result/search_results.json", "w", encoding="utf-8") as f:
         json.dump(search_results, f, ensure_ascii=False, indent=2)
+
+    print("Results saved successfully.")
 
 if __name__ == "__main__":
     import json

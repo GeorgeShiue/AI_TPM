@@ -5,6 +5,7 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 import aiofiles
 import re
 
+# TODO: 處理可能爬到空白的情況
 async def crawl_single_url(crawler, url, title):
     try:
         run_conf = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
@@ -27,7 +28,8 @@ async def crawl_single_url(crawler, url, title):
         return {"status": "error", "title": title, "url": url, "error": str(e)}
 
 async def parallel_crawling(search_results):
-    shutil.rmtree("survey/result/md_docs")
+    if os.path.exists("survey/result/md_docs"):
+        shutil.rmtree("survey/result/md_docs")
     os.makedirs("survey/result/md_docs", exist_ok=True)
 
     browser_conf = BrowserConfig(headless=True)
@@ -51,6 +53,7 @@ async def parallel_crawling(search_results):
                     print(f"❌ Failed: {result['title']} - {result.get('error', 'Unknown error')}")
             else:
                 print(f"❌ Exception: {result}")
+
 
 
 if __name__ == "__main__":
